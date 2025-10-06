@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AeroCast — Weather Dashboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Roboto',sans-serif}
+  html,body{height:100%;background:#0f1114;display:flex;align-items:center;justify-content:center;color:#fff}
+
+  .login-screen{width:360px;background:linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    padding:40px 32px;border-radius:20px;backdrop-filter:blur(14px);box-shadow:0 20px 60px rgba(0,0,0,0.6);text-align:center}
+  .login-screen h1{margin-bottom:28px;font-size:28px}
+  .login-screen input{width:100%;padding:12px;margin-bottom:16px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;font-size:14px}
+  .login-screen button{width:100%;padding:12px;font-size:16px;font-weight:600;border:none;border-radius:10px;cursor:pointer;
+    background:#ffb347;color:#000;transition:0.2s}
+  .login-screen button:hover{background:#ff9900}
+
+  .hidden{display:none}
+  .weather-card{width:950px;max-width:95%;background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.025));
+    border-radius:22px;padding:34px;backdrop-filter: blur(14px);box-shadow: 0 20px 60px rgba(0,0,0,0.6);position:relative}
+
+  .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:10px}
+  .logout-btn{padding:8px 16px;border:none;border-radius:8px;background:#ff6b6b;color:#fff;cursor:pointer;font-weight:600}
+  .logout-btn:hover{background:#ff8787}
+  .username{font-size:16px;font-weight:600;color:#ffd27f}
+  .search-bar input{width:160px;padding:6px 10px;border-radius:8px;border:none;background:rgba(255,255,255,0.1);color:#fff;font-size:13px}
+  .search-bar input::placeholder{color:#bbb}
+
+  .main-info{display:flex;align-items:center;gap:20px}
+  .left{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+  .temp{font-size:64px;font-weight:700;line-height:1}
+  .condition{font-size:20px;color:#cfcfcf}
+  .details{font-size:14px;color:#a9a9a9}
+  .center-icon{flex:0 0 220px;display:flex;align-items:center;justify-content:center;font-size:130px}
+  .forecast-panel{flex:0 0 170px;display:flex;flex-direction:column;gap:10px}
+  .day-card{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;
+    background:rgba(255,255,255,0.04);font-size:14px;color:#eee}
+
+  .hourly-wrap{position:relative;margin-top:28px}
+  .chart-svg{position:absolute;left:0;top:0;width:100%;height:160px;pointer-events:none;overflow:visible;z-index:1}
+  .chart-path{fill:none;stroke:#ffb347;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  .chart-area{fill:rgba(255,179,71,0.06)}
+  .hourly{display:flex;gap:12px;position:relative;z-index:2;align-items:flex-end;height:160px;padding-top:12px}
+  .hour-box{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;font-size:13px;color:#d0d0d0;padding-bottom:8px}
+  .hour-temp{margin-bottom:10px;font-weight:600}
+  .hour-label{font-size:12px;color:#9aa0a6}
+  .point{fill:#ffb347;stroke:none}
+
+  .dos-donts{display:flex;justify-content:space-between;gap:30px;margin-top:30px}
+  .dos,.donts{flex:1;background:rgba(255,255,255,0.05);padding:20px;border-radius:15px}
+  .dos h3,.donts h3{margin-bottom:12px;color:#ffb347}
+  .dos ul,.donts ul{list-style:disc;margin-left:20px;font-size:14px;color:#ddd}
+
+  /* Alert Box */
+  #alertBox {
+    display:none; 
+    position:absolute; 
+    top:50%; left:50%; transform:translate(-50%,-50%);
+    padding:20px 30px; 
+    border-radius:12px;
+    color:#fff; 
+    font-size:18px; 
+    font-weight:600; 
+    text-align:center;
+    box-shadow:0 6px 18px rgba(0,0,0,0.6); 
+    z-index:999;
+    transition:opacity 0.3s ease;
+  }
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="login-screen" id="loginScreen">
+  <h1>Login to AeroCast</h1>
+  <input type="text" id="username" placeholder="Username" />
+  <input type="password" id="password" placeholder="Password" />
+  <button id="loginBtn">Login</button>
+</div>
+
+<!-- Dashboard -->
+<div class="weather-card hidden" id="dashboard">
+  <div class="top-bar">
+    <button class="logout-btn" id="logoutBtn">Logout</button>
+    <div class="search-bar"><input type="text" id="searchCity" placeholder="🔍 City..."></div>
+    <div class="username">PONKARTHIGA 22UIT012</div>
+  </div>
+
+  <div class="main-info">
+    <div class="left">
+      <div class="temp" id="temp">--°C</div>
+      <div class="condition" id="condition">---</div>
+      <div class="details" id="details"></div>
+    </div>
+    <div class="center-icon" id="wicon">☁️</div>
+    <div class="forecast-panel" id="forecastPanel"></div>
+  </div>
+
+  <!-- Hourly Chart -->
+  <div class="hourly-wrap">
+    <svg class="chart-svg" id="chartSvg" viewBox="0 0 1000 160" preserveAspectRatio="none">
+      <path class="chart-path" id="chartPath" d=""></path>
+      <path class="chart-area" id="chartArea" d=""></path>
+      <g id="chartPoints"></g>
+    </svg>
+    <div class="hourly" id="hourly"></div>
+  </div>
+
+  <!-- Do's & Don'ts -->
+  <div class="dos-donts">
+    <div class="dos">
+      <h3>✅ Do's</h3>
+      <ul id="dosList"></ul>
+    </div>
+    <div class="donts">
+      <h3>❌ Don'ts</h3>
+      <ul id="dontsList"></ul>
+    </div>
+  </div>
+
+  <!-- Alert Box -->
+  <div id="alertBox"></div>
+</div>
+
+<script>
+/* ===== Login Toggle ===== */
+document.getElementById("loginBtn").addEventListener("click", function(){
+  document.getElementById("loginScreen").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  updateWeather("Chennai"); // Default city
+});
+
+/* ===== Logout Toggle ===== */
+document.getElementById("logoutBtn").addEventListener("click", function(){
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("loginScreen").classList.remove("hidden");
+});
+
+/* ===== Search ===== */
+document.getElementById("searchCity").addEventListener("keypress", function(e){
+  if(e.key === "Enter"){
+    updateWeather(e.target.value);
+  }
+});
+
+/* ===== Fake Weather Data ===== */
+const fakeData = {
+  "Sunny": {icon:"☀️", alert:"☀️ Heat Alert! Stay Hydrated.", dos:["Wear sunglasses","Stay hydrated","Apply sunscreen","Wear light clothes"], donts:["Avoid long sun exposure","Don’t forget sunscreen"]},
+  "Rainy": {icon:"🌧️", alert:"🌧️ Rain Alert! Carry Umbrella.", dos:["Carry umbrella","Wear waterproof shoes","Drive carefully"], donts:["Don’t overspeed","Don’t leave electronics unprotected"]},
+  "Snowy": {icon:"❄️", alert:"❄️ Cold Alert! Dress Warmly.", dos:["Wear warm layers","Keep emergency kit","Drive slowly"], donts:["Don’t ignore frostbite","Don’t travel without snow tires"]},
+  "Storm": {icon:"⛈️", alert:"⛈️ Storm Alert! Stay Indoors.", dos:["Stay indoors","Keep flashlights ready"], donts:["Don’t stand under trees","Don’t use electronics"]},
+  "Cloudy": {icon:"☁️", alert:"☁️ Cloudy Skies. Stay Updated.", dos:["Carry a jacket","Check forecast updates"], donts:["Don’t assume no rain"]}
+};
+
+/* ===== Update Weather ===== */
+function updateWeather(city){
+  const conditions = Object.keys(fakeData);
+  const cond = conditions[Math.floor(Math.random()*conditions.length)];
+  const temp = Math.floor(Math.random()*40)-5; // -5 to 35
+  const w = fakeData[cond];
+
+  document.getElementById("temp").innerText = temp+"°C";
+  document.getElementById("condition").innerText = cond+" in "+city;
+  document.getElementById("details").innerText = `Feels like ${temp-1}°C | Humidity ${Math.floor(Math.random()*50+30)}%`;
+  document.getElementById("wicon").innerText = w.icon;
+
+  // Forecast (7 days)
+  const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  let forecastHTML="";
+  days.forEach(d=>{
+    const c=conditions[Math.floor(Math.random()*conditions.length)];
+    forecastHTML+=`<div class="day-card"><span>${d}</span><span>${fakeData[c].icon}</span><span>${Math.floor(Math.random()*35)}°</span></div>`;
+  });
+  document.getElementById("forecastPanel").innerHTML=forecastHTML;
+
+  // Hourly temps
+  const hourly=document.getElementById("hourly");
+  hourly.innerHTML="";
+  for(let i=9;i<=15;i++){
+    const t=Math.floor(Math.random()*30);
+    hourly.innerHTML+=`<div class="hour-box" data-temp="${t}"><div class="hour-temp">${t}°</div><div class="hour-label">${i}h</div></div>`;
+  }
+  drawAlignedCurve();
+
+  // Do's & Don'ts
+  updateDosDonts(cond);
+
+  // Alert
+  showAlert(cond,temp);
+}
+
+/* ===== Curve Drawing ===== */
+function drawAlignedCurve() {
+  const hourly = document.getElementById('hourly');
+  const boxes = Array.from(hourly.querySelectorAll('.hour-box'));
+  const path = document.getElementById('chartPath');
+  const area = document.getElementById('chartArea');
+  const pointsGroup = document.getElementById('chartPoints');
+  if (!boxes.length) return;
+
+  const contRect = hourly.getBoundingClientRect();
+  const temps = boxes.map(b => parseFloat(b.dataset.temp));
+  const centers = boxes.map(b => {
+    const r = b.getBoundingClientRect();
+    const cx = (r.left - contRect.left) + (r.width / 2);
+    return cx / contRect.width * 1000;
+  });
+
+  const minT = Math.min(...temps), maxT = Math.max(...temps);
+  const topPadding=18,bottomPadding=36,svgHeight=160;
+  function tempToY(t){
+    if(maxT===minT) return (topPadding+(svgHeight-bottomPadding))/2;
+    const pct=(t-minT)/(maxT-minT);
+    return topPadding+(1-pct)*(svgHeight-topPadding-bottomPadding);
+  }
+
+  const points=temps.map((t,i)=>({x:centers[i],y:tempToY(t)}));
+
+  function buildSmoothPath(pts){
+    if(pts.length===1) return `M ${pts[0].x} ${pts[0].y}`;
+    let d=`M ${pts[0].x} ${pts[0].y}`;
+    for(let i=1;i<pts.length;i++){
+      const prev=pts[i-1],curr=pts[i];
+      const cx=(prev.x+curr.x)/2,cy=(prev.y+curr.y)/2;
+      d+=` Q ${prev.x} ${prev.y} ${cx} ${cy}`;
+    }
+    const last=pts[pts.length-1];
+    d+=` T ${last.x} ${last.y}`;
+    return d;
+  }
+
+  const mainPath=buildSmoothPath(points);
+  const areaPath=mainPath+` L ${points[points.length-1].x} ${svgHeight} L ${points[0].x} ${svgHeight} Z`;
+  path.setAttribute('d',mainPath);
+  area.setAttribute('d',areaPath);
+
+  pointsGroup.innerHTML='';
+  points.forEach(p=>{
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);
+    c.setAttribute('r',4.2);c.setAttribute('class','point');
+    pointsGroup.appendChild(c);
+  });
+}
+window.addEventListener('resize', drawAlignedCurve);
+
+/* ===== Do's & Don'ts ===== */
+function updateDosDonts(cond){
+  const dosList=document.getElementById("dosList");
+  const dontsList=document.getElementById("dontsList");
+  dosList.innerHTML=""; dontsList.innerHTML="";
+  fakeData[cond].dos.forEach(d=>{let li=document.createElement("li");li.innerText=d;dosList.appendChild(li);});
+  fakeData[cond].donts.forEach(d=>{let li=document.createElement("li");li.innerText=d;dontsList.appendChild(li);});
+}
+
+/* ===== Alerts ===== */
+function showAlert(cond,temp){
+  const alertBox=document.getElementById("alertBox");
+  let bgColor="rgba(0,0,0,0.9)";
+  if(cond==="Sunny") bgColor="rgba(255,87,34,0.9)";
+  if(cond==="Rainy") bgColor="rgba(30,136,229,0.9)";
+  if(cond==="Storm") bgColor="rgba(142,36,170,0.9)";
+  if(cond==="Snowy") bgColor="rgba(3,169,244,0.9)";
+  if(cond==="Cloudy") bgColor="rgba(97,97,97,0.9)";
+
+  let message=fakeData[cond].alert;
+  if(temp>30) message="⚠️ Heat Alert: It's too hot!";
+  if(temp<5) message="❄️ Cold Alert: It's freezing!";
+
+  alertBox.innerText=message;
+  alertBox.style.background=bgColor;
+  alertBox.style.display="block";
+  alertBox.style.opacity="1";
+
+  setTimeout(()=>{alertBox.style.opacity="0";},3500);
+  setTimeout(()=>{alertBox.style.display="none";},4000);
+}
+</script>
+
+</body>
+</html>
